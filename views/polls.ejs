@@ -1,0 +1,132 @@
+<% 
+const electoralVotesPerState = {
+    "alabama": 9,
+    "alaska": 3,
+    "arizona": 11,
+    "arkansas": 6,
+    "california": 54,
+    "colorado": 10,
+    "connecticut": 7,
+    "delaware": 3,
+    "district-of-columbia": 3,
+    "florida": 30,
+    "georgia": 16,
+    "hawaii": 4,
+    "idaho": 4,
+    "illinois": 19,
+    "indiana": 11,
+    "iowa": 6,
+    "kansas": 6,
+    "kentucky": 8,
+    "louisiana": 8,
+    "maine": 4,
+    "maryland": 10,
+    "massachusetts": 11,
+    "michigan": 15,
+    "minnesota": 10,
+    "mississippi": 6,
+    "missouri": 10,
+    "montana": 4,
+    "nebraska": 5,
+    "nevada": 6,
+    "new-hampshire": 4,
+    "new-jersey": 14,
+    "new-mexico": 5,
+    "new-york": 28,
+    "north-carolina": 16,
+    "north-dakota": 3,
+    "ohio": 17,
+    "oklahoma": 7,
+    "oregon": 8,
+    "pennsylvania": 19,
+    "rhode-island": 4,
+    "south-carolina": 9,
+    "south-dakota": 3,
+    "tennessee": 11,
+    "texas": 40,
+    "utah": 6,
+    "vermont": 3,
+    "virginia": 13,
+    "washington": 12,
+    "west-virginia": 4,
+    "wisconsin": 10,
+    "wyoming": 3
+}
+
+class Party{
+    static parties = {}
+
+    static getParty(party){
+        let partyObj = Party.parties[party];
+        if(partyObj){
+            return partyObj;
+        }else{
+            return {
+                name: party,
+                votes: 0,
+                color: "#FFF"
+            }
+        }
+    }
+
+    constructor(name, color){
+        this.name = name;
+        this.votes = 0;
+        this.color = color;
+
+        Party.parties[name] = this;
+    }
+
+    addVotes(votes){
+        this.votes = this.votes + votes;
+    }
+}
+
+new Party("Dem", "#00F");
+new Party("Rep", "#F00");
+
+
+%>
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>2024 Presidential Election Projections</title>
+    </head>
+    <body style="background: #000;overflow:hidden;">
+        <div style="display: flex;flex-direction: row-reverse;justify-content: center;height: 100vh;align-items: center;">
+            <div style="display:flex;height: 60vh;flex-direction: column;flex-wrap: wrap;">
+            <%
+            
+            for(let [stateName, stateData] of Object.entries(polls)){
+                let partyWinner;
+                let mostVotes = 0;
+                for(let [partyName, partyData] of Object.entries(stateData)){
+                    if(partyName == "ts" || partyName == "name")continue;
+                    if(mostVotes < parseFloat(partyData.pct)){
+                        mostVotes = parseFloat(partyData.pct);
+                        partyWinner = partyName;
+                    }
+                }
+                let party = Party.getParty(partyWinner);
+                party.addVotes(electoralVotesPerState[stateData.name]);
+                %>
+                
+                <%-"<p style=color:"%><%=party.color%><%-";margin-right:20px;>"%><%=stateData.name + ": " + mostVotes + "% +" + electoralVotesPerState[stateData.name]%><%-"</p>"%>
+            <%
+            }
+
+            %>
+            </div>
+            <div style="margin-right: 64px;font-size: 5.5em;">
+                <p style="color: blue"><%=Party.getParty("Dem").votes%></p>    
+                <p style="color: red"><%=Party.getParty("Rep").votes%></p>
+            </div>
+        </div>
+    </body>
+    <script>
+        setTimeout(() => {
+            location.reload();
+        }, 86405000);
+    </script>
+</html>
