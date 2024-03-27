@@ -13,8 +13,6 @@
             </svg>
             <div id="statesTiny">
                 <div id="electoralVotes">
-                    <span id="DemVotes">0</span>
-                    <span id="RepVotes">0</span>
                 </div>
             </div>
         </div>
@@ -67,6 +65,15 @@
             }
 
             setParty(partyObject){
+                if(this.partyName){
+                    let oldPartyObject = Party.parties[this.partyName]
+                    oldPartyObject.addVotes(this.electoralVotes * -1)
+                    this.pathElement.classList.remove(this.partyName)
+                    if(this.tiny){
+                        this.tinyElement.classList.remove(this.partyName)
+                    }
+                }
+                this.partyName = partyObject.name
                 this.pathElement.classList.add(partyObject.name)
                 if(this.tiny){
                     this.tinyElement.style.backgroundColor = partyObject.color;
@@ -152,42 +159,97 @@
                 }
             }
 
-            constructor(name, color){
+            constructor(name, color, fullName){
                 this.name = name;
                 this.votes = 0;
                 this.color = color;
+                this.fullName = fullName
+                this.votesElement = document.createElement("span")
+                this.votesElement.style.color = color
+                this.votesElement.classList.add("partyvotes")
+                document.getElementById("electoralVotes").appendChild(this.votesElement)
 
                 Party.parties[name] = this;
             }
 
             addVotes(votes){
                 this.votes = this.votes + votes;
-                console.log(this.votes, votes)
-                document.getElementById(`${this.name}Votes`).innerHTML = this.votes;
+                this.votesElement.innerHTML = this.votes;
+                this.votesElement.style.display = "block"
+                if(this.votes < 1){
+                    this.votesElement.style.display = "none"
+                }
             }
         }
 
-        new Party("Dem", "rgb(16, 16, 206)");
-        new Party("Rep", "rgb(208,8,8)");
+        
+        new Party("Dem", "rgb(16, 16, 206)", "Democrats");
+        new Party("Rep", "rgb(208,8,8)", "Republicans");
+        new Party("Ind", "#ebc81a", "Independents");
+        new Party("Gre", "#3d8736", "Green Party");
+        new Party("Neutral", "rgb(134, 134, 134)", "Neutral");
 
         document.getElementById("svgContainer").style.width = "959px"
         document.getElementById("svgContainer").style.height ="593px"
 
         let alertSpecialTopmost = 100
+        let ctrlHeld = false;
+
+        document.addEventListener("keydown", event=>{
+            if(event.key == "Control"){
+                ctrlHeld = true;
+            }
+        })
+
+        document.addEventListener("keyup", event=>{
+            if(event.key == "Control"){
+                ctrlHeld = false;
+            }
+        })
 
         data.forEach(stateData=>{
             let stateObject = State.states[stateData.name]
             
             if(!stateObject)return;
 
+            
+
+            let partyArray = [];
+            for(let [partyName,partyData] of Object.entries(stateData)){
+                if(partyName == "ts" || partyName == "name")continue;
+                partyArray.push(partyData)
+            }
+            partyArray.sort((a,b)=>parseFloat(b.pct) - parseFloat(a.pct))
+            let majority = partyArray[0].party
+            if(partyArray[1].pct == partyArray[0].pct){
+                majority = "Neutral"
+            };
+            let majorityObject = Party.getParty(majority);
+            if(!majorityObject)return;
+            stateObject.setParty(majorityObject)
+
             let alertSpecial = (text, titlebartext, stateElement, clickEvent)=>{
                 let alertElement = document.createElement("div")
                 let alertElementTitlebar = document.createElement("div")
                 let alertElementText = document.createElement("textarea")
+                let alertElementPartySelection = document.createElement("select")
+                alertElementPartySelection.classList.add("partyselector")
+                for(let [partyName, partyObject] of Object.entries(Party.parties)){
+                    let optionElement = document.createElement("option")
+                    optionElement.value = partyName
+                    optionElement.innerHTML = partyObject.fullName
+                    optionElement.classList.add("partyselectionopt")
+                    alertElementPartySelection.appendChild(optionElement)
+                    if(stateObject.partyName == partyName){
+                        optionElement.selected = true
+                    }
+                }
+                alertElementPartySelection.addEventListener("change", ()=>{
+                    stateObject.setParty(Party.getParty(alertElementPartySelection.value))
+                })
                 let alertElementButton = document.createElement("button")
 
                 alertElement.classList.add("alert")
-                console.log(clickEvent)
                 alertElement.style.top = clickEvent.clientY + "px"
                 alertElement.style.left = clickEvent.clientX + "px"
 
@@ -229,13 +291,33 @@
 
                 alertElement.appendChild(alertElementTitlebar)
                 alertElement.appendChild(alertElementText)
+                alertElement.appendChild(alertElementPartySelection)
                 alertElement.appendChild(alertElementButton)
                 document.body.appendChild(alertElement)
                 alertElementText.style.height = alertElementText.scrollHeight + "px"
             }
 
             let clickFunc = click=>{
-                let capStateName = stateData.name.charAt(0).toUpperCase() + stateData.name.slice(1);
+                if(ctrlHeld){
+                    let partyArrayN = [];
+                    for(let [partyName,_] of Object.entries(Party.parties)){
+                        if(partyName == "ts" || partyName == "name")continue;
+                        partyArrayN.push(partyName)
+                    }
+                    let nextPartyIndex = partyArrayN.indexOf(stateObject.partyName) + 1
+                    if(nextPartyIndex >= partyArrayN.length){
+                        nextPartyIndex = 0
+                    }
+                    let nextParty = partyArrayN[nextPartyIndex]
+                    console.log(partyArrayN, nextParty)
+                    stateObject.setParty(Party.getParty(nextParty))
+                    return;
+                }
+                let capStateName = (stateData.name.charAt(0).toUpperCase() + stateData.name.slice(1)).split("-");
+                for(let i = 0; i < capStateName.length; i++){
+                    capStateName[i] = capStateName[i].charAt(0).toUpperCase() + capStateName[i].slice(1)
+                }
+                capStateName = capStateName.join(" ")
                 let alertData = ""
                 for(let party in stateData){
                     if(party == "name" || party == "ts")continue;
@@ -250,15 +332,6 @@
             }
 
             stateObject.pathElement.addEventListener("click", clickFunc)
-            if(!stateData.Dem || !stateData.Rep)return;
-
-
-
-            let majority = parseFloat(stateData.Dem.pct) > parseFloat(stateData.Rep.pct) ? "Dem" : "Rep";
-            if(stateData.Dem.pct == stateData.Rep.pct)return;
-            let majorityObject = Party.getParty(majority);
-            if(!majorityObject)return;
-            stateObject.setParty(majorityObject)
             
         })
 
@@ -348,8 +421,14 @@
             align-items: center;
             justify-content: center;
             width: 0px;
-            gap: 16px;
-            margin-bottom:6px;
+            gap: 0px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+            width: 180px;
+            position: relative;
+            left: 8px;
+            margin-bottom: 32px;
+            font-weight: 501;
         }
 
         #states {
@@ -368,6 +447,14 @@
             fill: rgb(208,8,8);
         }
 
+        .state.Ind {
+            fill: #ebc81a;
+        }
+
+        .state.Gre {
+            fill: #3d8736;
+        }
+
         .state:hover {
             cursor: pointer;
             fill: #838383
@@ -379,6 +466,14 @@
 
         .state.Rep:hover {
             fill: rgb(128, 12, 12);
+        }
+
+        .state.Ind:hover {
+            fill: #978818;
+        }
+
+        .state.Gre:hover {
+            fill: #255823;
         }
 
         .electoralVotes {
@@ -435,5 +530,29 @@
             cursor: all-scroll;
         }
 
+        .partyvotes {
+            display: none;
+            margin-right: 16px;
+            height: 46px;
+        }
+
+        .partyselector {
+            margin-bottom: 6px;
+            background: rgba(255,255,255,.15);
+            border: none;
+            border-radius: 3px;
+            padding: 4px 7px;
+            color: white;
+            transition: .1s;
+        }
+
+        .partyselector:hover {
+            background: rgba(255,255,255,.2);
+            cursor: pointer;
+        }
+
+        .partyselectionopt {
+            color: black;
+        }
     </style>
 </html>
