@@ -5,16 +5,18 @@
         <title>2024 Presidential Election Projections</title>
     </head>
     <body>
+        
         <div id="states">
-            <div id="electoralVotes">
-                <span id="DemVotes">0</span>
-                <span id="RepVotes">0</span>
-            </div>
             <svg xmlns="http://www.w3.org/2000/svg" id="svgContainer">
                 <g id="svgStates"></g>
                 <g id="svgBorders"></g>
             </svg>
-            <div id="statesTiny"></div>
+            <div id="statesTiny">
+                <div id="electoralVotes">
+                    <span id="DemVotes">0</span>
+                    <span id="RepVotes">0</span>
+                </div>
+            </div>
         </div>
     </body>
     <script>
@@ -171,20 +173,76 @@
         document.getElementById("svgContainer").style.width = "959px"
         document.getElementById("svgContainer").style.height ="593px"
 
+        let alertSpecialTopmost = 100
+
         data.forEach(stateData=>{
             let stateObject = State.states[stateData.name]
             
             if(!stateObject)return;
 
-            let clickFunc = ()=>{
+            let alertSpecial = (text, titlebartext, stateElement, clickEvent)=>{
+                let alertElement = document.createElement("div")
+                let alertElementTitlebar = document.createElement("div")
+                let alertElementText = document.createElement("textarea")
+                let alertElementButton = document.createElement("button")
+
+                alertElement.classList.add("alert")
+                console.log(clickEvent)
+                alertElement.style.top = clickEvent.clientY + "px"
+                alertElement.style.left = clickEvent.clientX + "px"
+
+                alertElementTitlebar.classList.add("alerttitlebar")
+                alertElementTitlebar.innerHTML = titlebartext
+                alertElementTitlebar.addEventListener("mousedown", ()=>{
+                    alertElement.style.zIndex = alertSpecialTopmost;
+                    alertSpecialTopmost++;
+                    let x = alertElement.getBoundingClientRect().left;
+                    let y = alertElement.getBoundingClientRect().top;
+                    let offsetX = event.clientX - x;
+                    let offsetY = event.clientY - y;
+
+                    function move(event){
+                        alertElement.style.left = event.clientX - offsetX + "px";
+                        alertElement.style.top = event.clientY - offsetY + "px";
+                    }
+
+                    function up(){
+                        document.removeEventListener("mousemove", move);
+                        document.removeEventListener("mouseup", up);
+                    }
+
+                    document.addEventListener("mousemove", move);
+                    document.addEventListener("mouseup", up);
+                
+                })
+
+                alertElementText.classList.add("alerttext")
+                alertElementText.value = text;
+                alertElementText.readOnly = true;
+                
+
+                alertElementButton.classList.add("alertbutton")
+                alertElementButton.innerHTML = "Close"
+                alertElementButton.addEventListener("click", ()=>{
+                    alertElement.remove()
+                });
+
+                alertElement.appendChild(alertElementTitlebar)
+                alertElement.appendChild(alertElementText)
+                alertElement.appendChild(alertElementButton)
+                document.body.appendChild(alertElement)
+                alertElementText.style.height = alertElementText.scrollHeight + "px"
+            }
+
+            let clickFunc = click=>{
                 let capStateName = stateData.name.charAt(0).toUpperCase() + stateData.name.slice(1);
-                let alertData = capStateName + ": "
+                let alertData = ""
                 for(let party in stateData){
                     if(party == "name" || party == "ts")continue;
-                    alertData += `\n${party}: ${stateData[party].choice} ${stateData[party].pct}%`
+                    alertData += `${party}: ${stateData[party].choice} ${stateData[party].pct}%\n`
                 }
-                alertData += `\nElectoral Votes: ${stateObject.electoralVotes}`
-                alert(alertData)
+                alertData += `Electoral Votes: ${stateObject.electoralVotes}`
+                alertSpecial(alertData, capStateName, stateObject.pathElement, click)
             }
 
             if(stateObject.tiny){
@@ -228,6 +286,7 @@
             text-align:center;
             user-select: none;
             transition: .1s;
+            width:75px
         }
 
         .tinystate:hover {
@@ -247,6 +306,7 @@
             display: flex;
             flex-flow: column;
             justify-content: center;
+            align-items: center;
         }
 
         * {
@@ -260,6 +320,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            flex-flow: column;
         }
 
         #svgStates {
@@ -281,12 +342,14 @@
         }
 
         #electoralVotes {
-            display:flex;
-            flex-flow: column;
-            font-size: 7em;
+            display: flex;
+            flex-flow: row;
+            font-size: 2.5em;
             align-items: center;
             justify-content: center;
-            width: 250px
+            width: 0px;
+            gap: 16px;
+            margin-bottom:6px;
         }
 
         #states {
@@ -325,6 +388,52 @@
             user-select: none;
         }
 
+        .alert {
+            position: absolute;
+            background: #1e1e1ea1;
+            display: flex;
+            flex-flow: column;
+            padding: 8px;
+            border-radius: 3px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .alerttext {
+            background: transparent;
+            border: none;
+            color: white;
+            resize: none;
+        }
+
+        .alertbutton {
+            background: rgba(255,255,255,.15);
+            border: none;
+            color: white;
+            padding: 8px 0;
+            transition: .1s;
+            border-radius: 3px;
+        }
+
+        .alertbutton:hover {
+            cursor: pointer;
+            background: rgba(255,255,255,.2);
+        }
+
+        .alerttext:focus {
+            outline: none;
+        }
+
+        .alerttitlebar {
+            color: #ffffffdb;
+            font-weight: bold;
+            background: rgba(255,255,255,.1);
+            padding: 4px;
+            border-radius: 3px;
+        }
+
+        .alerttitlebar:hover {
+            cursor: all-scroll;
+        }
 
     </style>
 </html>
