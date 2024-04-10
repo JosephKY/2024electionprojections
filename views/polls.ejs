@@ -5,7 +5,10 @@
         <title>2024 Presidential Election Projections</title>
     </head>
     <body>
-        
+        <div id="smallestLeads">
+            <div id="smallestLeadsTitle">Smallest Leads</div>
+            <div id="smallestLeadsList"></div>
+        </div>
         <div id="states">
             <svg xmlns="http://www.w3.org/2000/svg" id="svgContainer">
                 <g id="svgStates"></g>
@@ -216,7 +219,7 @@
 
             let partyArray = [];
             for(let [partyName,partyData] of Object.entries(stateData)){
-                if(partyName == "ts" || partyName == "name")continue;
+                if(partyName == "ts" || partyName == "name" || partyName == "clickFunc" || partyName == "leadDifference")continue;
                 partyArray.push(partyData)
             }
             partyArray.sort((a,b)=>parseFloat(b.pct) - parseFloat(a.pct))
@@ -301,7 +304,7 @@
                 if(ctrlHeld){
                     let partyArrayN = [];
                     for(let [partyName,_] of Object.entries(Party.parties)){
-                        if(partyName == "ts" || partyName == "name")continue;
+                        if(partyName == "ts" || partyName == "name" || partyName == "clickFunc" || partyName == "leadDifference")continue;
                         partyArrayN.push(partyName)
                     }
                     let nextPartyIndex = partyArrayN.indexOf(stateObject.partyName) + 1
@@ -320,7 +323,7 @@
                 capStateName = capStateName.join(" ")
                 let alertData = ""
                 for(let party in stateData){
-                    if(party == "name" || party == "ts")continue;
+                    if(party == "name" || party == "ts" || party == "clickFunc" || party == "leadDifference")continue;
                     alertData += `${party}: ${stateData[party].choice} ${stateData[party].pct}%\n`
                 }
                 alertData += `Electoral Votes: ${stateObject.electoralVotes}`
@@ -332,8 +335,41 @@
             }
 
             stateObject.pathElement.addEventListener("click", clickFunc)
+
+            stateData.leadDifference = parseFloat(partyArray[0].pct) - parseFloat(partyArray[1].pct)
+            console.log(stateData.name, stateData.leadDifference)
+
+            stateData.clickFunc = clickFunc
             
         })
+
+        // sort by leadDifference from least to greatest
+        data.sort((a,b)=>a.leadDifference - b.leadDifference)
+
+        smallestLeadsElement = document.getElementById("smallestLeads")
+        for(let index in data){
+            if(index > 20)break;
+            let stateData = data[index]
+            let stateElement = document.createElement("span")
+            stateElement.innerHTML = `${stateData.name} - ${stateData.leadDifference.toFixed(2)}%`
+
+            let partyArray = [];
+            for(let [partyName,partyData] of Object.entries(stateData)){
+                if(partyName == "ts" || partyName == "name" || partyName == "clickFunc" || partyName == "leadDifference")continue;
+                partyArray.push(partyData)
+            }
+            partyArray.sort((a,b)=>parseFloat(b.pct) - parseFloat(a.pct))
+            let majority = partyArray[0].party
+            if(partyArray[1].pct == partyArray[0].pct){
+                majority = "Neutral"
+            };
+            let majorityObject = Party.getParty(majority);
+
+            stateElement.style.color = majorityObject.color
+            stateElement.addEventListener("click", stateData.clickFunc)
+            stateElement.classList.add("leadstate")
+            smallestLeadsElement.appendChild(stateElement)
+        }
 
         let adjustAllEvotes = ()=>{
             for(let [_,stateObj] of Object.entries(State.states)){
@@ -393,7 +429,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            flex-flow: column;
+            flex-flow: row;
         }
 
         #svgStates {
@@ -553,6 +589,22 @@
 
         .partyselectionopt {
             color: black;
+        }
+
+        #smallestLeads {
+            display: flex;
+            flex-flow: column;
+        }
+
+        .leadstate:hover {
+            cursor: pointer;
+            filter: brightness(1.4);
+        }
+        
+        .leadstate {
+            font-weight: 700;
+            margin-bottom: 2px;
+            transition: .1s;
         }
     </style>
 </html>
